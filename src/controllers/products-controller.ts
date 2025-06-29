@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 
 import zod from "zod";
 
+import { knex } from "@/database/knex";
+
 class ProductsController {
   //lidando com assincronismo por se lidar com banco de dados
 
@@ -12,16 +14,26 @@ class ProductsController {
       //lançando exceção para verificar instancia de AppError sendo gerada propositalmente
       // throw new AppError("ERRO LANÇADO DE TESTE")
 
-      response.json({ message: "ok" });
+      // ------------------
+
+      //  selecionando dados da tabela com KNEX
+      const { name } = request.query; // recuperando QUERYPARAMS
+
+      const products = await knex<ProductRepository>("products")
+        .select()
+        .whereLike("name", `%${name ?? ""}%`) // filtro com o operador LIKE do SQL e o uso do operador NULLISH para filtrar name se existir, se não, recupera tudo
+        .orderBy("name"); // ordenando por NAME
+
+      response.json(products);
     } catch (error) {
       //next para que seja possível o próprio express entender que se der erro ir para a próxima função capturar o erro
-
       next(error);
     }
   }
 
   async create(request: Request, response: Response, next: NextFunction) {
     try {
+      // utilizando o ZOD para fazer a validacao dos dados
       const bodySchema = zod.object({
         name: zod.string({ required_error: "Name is required!" }).trim().min(6),
         price: zod.number().gt(0, { message: "value must be greather than 0" }),
@@ -29,7 +41,10 @@ class ProductsController {
 
       const { name, price } = bodySchema.parse(request.body);
 
-      response.status(201).json({ name, price });
+      // inserindo no banco de dados com KNEX
+      await knex<ProductRepository>("products").insert({ name, price });
+
+      response.status(201).json();
     } catch (error) {
       next(error);
     }
