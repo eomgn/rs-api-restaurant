@@ -49,6 +49,33 @@ class ProductsController {
       next(error);
     }
   }
+
+  async update(request: Request, response: Response, next: NextFunction) {
+    try {
+      // validando com ZOD se o id passado é do tipo NUMBER
+      const id = zod
+        .string()
+        .transform((value) => Number(value))
+        .refine((value) => !isNaN(value), "id must be a number")
+        .parse(request.params.id);
+
+      // utilizando o ZOD para fazer a validacao dos dados
+      const bodySchema = zod.object({
+        name: zod.string({ required_error: "Name is required!" }).trim().min(6),
+        price: zod.number().gt(0, { message: "value must be greather than 0" }),
+      });
+
+      const { name, price } = bodySchema.parse(request.body);
+
+      await knex<ProductRepository>("products")
+        .update({ name, price, updated_at: knex.fn.now() })
+        .where({ id });
+
+      return response.json();
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export { ProductsController };
