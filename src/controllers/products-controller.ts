@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-
-import zod from "zod";
-
 import { knex } from "@/database/knex";
+import zod from "zod";
+import { AppError } from "@/utils/AppError";
 
 class ProductsController {
   //lidando com assincronismo por se lidar com banco de dados
@@ -70,6 +69,32 @@ class ProductsController {
       await knex<ProductRepository>("products")
         .update({ name, price, updated_at: knex.fn.now() })
         .where({ id });
+
+      return response.json();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async remove(request: Request, response: Response, next: NextFunction) {
+    try {
+      // validando com ZOD se o id passado é do tipo NUMBER
+      const id = zod
+        .string()
+        .transform((value) => Number(value))
+        .refine((value) => !isNaN(value), "id must be a number")
+        .parse(request.params.id);
+
+      const product = await knex<ProductRepository>("products")
+        .select()
+        .where({ id })
+        .first();
+
+      if (!product) {
+        throw new AppError("product not found");
+      }
+
+      await knex<ProductRepository>("products").delete().where({ id });
 
       return response.json();
     } catch (error) {
