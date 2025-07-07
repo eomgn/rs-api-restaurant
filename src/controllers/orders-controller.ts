@@ -40,11 +40,22 @@ class OrdersController {
         .where({ id: product_id })
         .first();
 
+      // verificando se o produto existe
       if (!product) {
         throw new AppError("product not found");
       }
 
-      return response.status(201).json(product);
+      // =======
+
+      // adicionando pedidos no banco de dados
+      await knex<OrderRepository>("orders").insert({
+        table_session_id,
+        product_id,
+        quantity,
+        price: product.price,
+      });
+
+      return response.status(201).json();
     } catch (error) {
       next(error);
     }
