@@ -41,7 +41,7 @@ class TablesSessionsController {
     try {
       const sessions = await knex<TablesSessionsRepository>("tables_sessions")
         .select()
-        .orderBy("opened_at");
+        .orderBy("closed_at");
 
       return response.json(sessions);
     } catch (error) {
